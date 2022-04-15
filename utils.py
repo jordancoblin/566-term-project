@@ -17,7 +17,8 @@ def get_data():
     X_ = data[["Pclass", "Age", "SibSp", "Parch", "Fare", "Sex_encoded"]].to_numpy()
     Y_ = data[["Survived"]].to_numpy()
 
-    X_aug = np.concatenate([np.ones([len(X_), 1]), X_], axis=1)
+    # X_aug = np.concatenate([np.ones([len(X_), 1]), X_], axis=1)
+    X_aug = X_
 
     # X_aug = np.concatenate(
     #     (np.ones([data.shape[0], 1]), data), axis=1)
