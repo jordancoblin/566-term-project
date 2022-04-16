@@ -6,15 +6,13 @@ import matplotlib.pyplot as plt
 def sigmoid(z):
     return 1 / (1 + np.exp(-z))
 
-# TODO: use relu as activation func
 def relu(z):
     z[z<0] = 0
     return z
 
+# Derivative of ReLU function
 def step(z):
-   z[z<0] = 0
-   z[z>=0] = 1
-   return z
+    return np.heaviside(z, 0)
 
 def init_weights(n_x, n_h, n_y):
     w1 = np.random.randn(n_h, n_x) * 0.01
@@ -36,7 +34,7 @@ def forward_prop(X, weights):
     # X: M x Nx
     M = X.shape[0]
     z1 = np.dot(X, weights["W1"].T) + np.tile(weights["B1"].T, (M, 1))
-    y1 = sigmoid(z1)
+    y1 = relu(z1)
     # print("z1 shape: ", z1.shape)
     # print("y1 shape: ", y1.shape)
 
@@ -59,6 +57,7 @@ def back_prop(W, X, t, node_output):
     # t: M x 1
     M = len(X)
 
+    z1 = node_output["Z1"]
     y1 = node_output["Y1"]
     y2 = node_output["Y2"]
     w2 = W["W2"]
@@ -71,7 +70,8 @@ def back_prop(W, X, t, node_output):
     # print("dz2 shape: ", dz2.shape)
     # print("w2 shape: ", w2.shape)
 
-    dz1 = np.dot(dz2, w2) * (y1 * (1 - y1))
+    # dz1 = np.dot(dz2, w2) * (y1 * (1 - y1))
+    dz1 = np.dot(dz2, w2) * step(z1)
     dw1 = 1/M * np.dot(dz1.T, X)
     db1 = 1/M * np.sum(dz1)
 
@@ -150,36 +150,6 @@ def train(X_train, t_train, X_val, t_val, nn_dims, alpha):
             acc_best = acc
             w_best = W
             epoch_best = epoch
-
-        # TODO: update weights based on gradients 
-
-        # grad = np.dot(X_batch.T, (y-t_batch))
-        # w = w - alpha*grad
-        # for batch in range(num_batches):
-
-        #     X_batch = X_train[batch*batch_size: (batch+1)*batch_size]
-        #     t_batch = np.concatenate(t_train[batch*batch_size: (batch+1)*batch_size])
-
-        #     forward_prop()
-        #     y, t_hat, loss, acc = predict(X_batch, w, t_batch)
-        #     loss_this_epoch += loss
-
-        #     grad = np.dot(X_batch.T, (y-t_batch))
-        #     w = w - alpha*grad
-
-        # Perform validation on the validation set by accuracy
-        # _, _, _, acc = predict(X_val, w, t_val)
-        # print("epoch acc: ", acc)
-
-        # # Append training loss and accuracy for the epoch
-        # train_losses.append(loss_this_epoch/num_batches)
-        # valid_accs.append(acc)
-
-        # Keep track of the best validation epoch, accuracy, and the weights
-        # if acc > acc_best:
-        #     acc_best = acc
-        #     w_best = w
-        #     epoch_best = epoch
     
     return epoch_best, acc_best,  w_best, train_losses, valid_accs
 
@@ -187,13 +157,12 @@ def train(X_train, t_train, X_val, t_val, nn_dims, alpha):
 ##############################
 # Main code starts here
 
-# Single hidden layer with 4 nodes
-# TODO: tune this
+# Single hidden layer with n_h nodes
 n_h = 32
 
-alpha = 0.04     # learning rate
-batch_size = 32    # batch size
-MaxEpoch = 100      # Maximum epoch - default 50
+alpha = 0.1     # learning rate
+batch_size = 100    # batch size
+MaxEpoch = 500      # Maximum epoch - default 50
 decay = 0.          # weight decay
 
 # logistic regression classifier

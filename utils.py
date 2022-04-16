@@ -18,7 +18,7 @@ def get_accuracy(t, t_hat):
 
 def get_data():
     data = pd.read_csv('./train.csv')
-    data = shuffle(data)
+    # data = shuffle(data)
     # print(data)
     # print(data.describe())
 
