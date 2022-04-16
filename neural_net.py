@@ -1,20 +1,20 @@
 from platform import node
 from utils import *
 import numpy as np
+import matplotlib.pyplot as plt
 
 def sigmoid(z):
     return 1 / (1 + np.exp(-z))
 
 # TODO: use relu as activation func
 def relu(z):
-    if z >= 0:
-        return z
-    return 0
+    z[z<0] = 0
+    return z
 
 def step(z):
-    if z >= 0:
-        return 1
-    return 0
+   z[z<0] = 0
+   z[z>=0] = 1
+   return z
 
 def init_weights(n_x, n_h, n_y):
     w1 = np.random.randn(n_h, n_x) * 0.01
@@ -62,10 +62,14 @@ def back_prop(W, X, t, node_output):
     y1 = node_output["Y1"]
     y2 = node_output["Y2"]
     w2 = W["W2"]
+    # print("y2 shape: ", y2.shape)
+    # print("t shape: ", t.shape)
 
     dz2 = y2 - t
     dw2 = 1/M * np.dot(dz2.T, y1)
     db2 = 1/M * np.sum(dz2)
+    # print("dz2 shape: ", dz2.shape)
+    # print("w2 shape: ", w2.shape)
 
     dz1 = np.dot(dz2, w2) * (y1 * (1 - y1))
     dw1 = 1/M * np.dot(dz1.T, X)
@@ -112,18 +116,40 @@ def train(X_train, t_train, X_val, t_val, nn_dims, alpha):
     acc_best = 0
     epoch_best = 0
 
-    # num_batches = int(np.ceil(len(X_train)/batch_size))  
+    num_batches = int(np.ceil(len(X_train)/batch_size))  
     for epoch in range(MaxEpoch):
-        node_output = forward_prop(X_train, W)
 
-        loss = get_cross_entropy_loss(node_output["Y2"], t_train)
+        loss_this_epoch = 0
+        for batch in range(num_batches):
+            X_batch = X_train[batch*batch_size: (batch+1)*batch_size]
+            t_batch = t_train[batch*batch_size: (batch+1)*batch_size]
+
+            node_output = forward_prop(X_batch, W)
+            # print("done forward prop")
+
+            loss = get_cross_entropy_loss(node_output["Y2"], t_batch)
+            loss_this_epoch += loss
+
+            grads = back_prop(W, X_batch, t_batch, node_output)
+            # print("done back prop")
+
+            W = update_weights(W, grads, alpha)
+
         print("loss this epoch: ", loss)
 
-        grads = back_prop(W, X_train, t_train, node_output)
-        print("done back prop")
+        # Perform validation on the validation set by accuracy
+        t_hat = predict(X_val, W)
+        acc = get_accuracy(t_val, t_hat)
+        print("epoch val acc: ", acc)
 
-        W = update_weights(W, grads, alpha)
-        print("done updating weights")
+        # Append training loss and accuracy for the epoch
+        train_losses.append(loss_this_epoch/num_batches)
+        valid_accs.append(acc)
+
+        if acc > acc_best:
+            acc_best = acc
+            w_best = W
+            epoch_best = epoch
 
         # TODO: update weights based on gradients 
 
@@ -155,7 +181,6 @@ def train(X_train, t_train, X_val, t_val, nn_dims, alpha):
         #     w_best = w
         #     epoch_best = epoch
     
-    w_best = W
     return epoch_best, acc_best,  w_best, train_losses, valid_accs
 
 
@@ -164,10 +189,10 @@ def train(X_train, t_train, X_val, t_val, nn_dims, alpha):
 
 # Single hidden layer with 4 nodes
 # TODO: tune this
-n_h = 12
+n_h = 32
 
-alpha = 0.1      # learning rate
-batch_size = 100    # batch size
+alpha = 0.04     # learning rate
+batch_size = 32    # batch size
 MaxEpoch = 100      # Maximum epoch - default 50
 decay = 0.          # weight decay
 
@@ -187,3 +212,17 @@ print("acc best: ", acc_best)
 t_hat = predict(X_test, w_best)
 acc_test = get_accuracy(t_test, t_hat)
 print("test acc: ", acc_test)
+
+plt.figure()
+plt.title("Neural Network Training Loss over Epochs")
+plt.xlabel('epoch')
+plt.ylabel('training loss')
+plt.plot(train_losses)
+plt.savefig('nn_training_loss' + '.png')
+
+plt.figure()
+plt.title("Neural Network Validation Accuracy over Epochs")
+plt.xlabel('epoch')
+plt.ylabel('validation accuracy')
+plt.plot(valid_accs)
+plt.savefig('nn_validation_accuracy' + '.png')

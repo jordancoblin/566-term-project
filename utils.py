@@ -10,8 +10,6 @@ def get_accuracy(t, t_hat):
     """
     Calculate accuracy,
     """
-    print("t shape: ", t.shape)
-    print("t_hat shape: ", t_hat.shape)
     num_correct = 0
     for i, t_m in enumerate(t):
         if t_m == t_hat[i]:
