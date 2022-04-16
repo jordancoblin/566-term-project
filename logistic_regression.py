@@ -1,4 +1,4 @@
-from utils import get_data
+from utils import *
 from sklearn.metrics import log_loss
 from functools import reduce
 import numpy as np
@@ -22,10 +22,6 @@ def one_hot(t, k):
     t_hot[np.arange(len(t_hot)),c] = 1
     return t_hot
 
-def cross_entropy(y, t):
-    epsilon = 1e-5    
-    return -np.average(t * np.log(y + epsilon) + (1 - t) * np.log(1 - y + epsilon))
-
 def get_accuracy(t, t_hat):
     """
     Calculate accuracy,
@@ -46,7 +42,7 @@ def predict(X, w, t=None):
     threshold = 0.5 
     t_hat = np.array(list(map(lambda x: 1 if x >= threshold else 0, y)))
 
-    loss = cross_entropy(y, t)
+    loss = get_cross_entropy_loss(y, t)
     acc = get_accuracy(t, t_hat)
     return y, t_hat, loss, acc
 

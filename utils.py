@@ -2,6 +2,10 @@ import pandas as pd
 import numpy as np
 from sklearn.utils import shuffle
 
+def get_cross_entropy_loss(y, t):
+    epsilon = 1e-5    
+    return -np.average(t * np.log(y + epsilon) + (1 - t) * np.log(1 - y + epsilon))
+
 def get_data():
     data = pd.read_csv('./train.csv')
     # data = shuffle(data)
