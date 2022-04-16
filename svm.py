@@ -31,5 +31,5 @@ classifier = SVC(C=C, kernel=kernel, gamma=gamma)
 classifier.fit(X_train, t_train)
 
 t_hat = classifier.predict(X_test)
-acc2 = accuracy_score(t_test, t_hat)
-print("test acc2: ", acc2)
+acc = accuracy_score(t_test, t_hat)
+print("test acc: ", acc)

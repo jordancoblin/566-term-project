@@ -2,13 +2,13 @@ from platform import node
 from utils import *
 import numpy as np
 import matplotlib.pyplot as plt
+from sklearn.metrics import accuracy_score
 
 def sigmoid(z):
     return 1 / (1 + np.exp(-z))
 
 def relu(z):
-    z[z<0] = 0
-    return z
+    return np.maximum(0, z)
 
 # Derivative of ReLU function
 def step(z):
@@ -34,14 +34,11 @@ def forward_prop(X, weights):
     # X: M x Nx
     M = X.shape[0]
     z1 = np.dot(X, weights["W1"].T) + np.tile(weights["B1"].T, (M, 1))
+    # y1 = sigmoid(z1)
     y1 = relu(z1)
-    # print("z1 shape: ", z1.shape)
-    # print("y1 shape: ", y1.shape)
 
     z2 = np.dot(y1, weights["W2"].T) + np.tile(weights["B2"].T, (M, 1))
     y2 = sigmoid(z2)
-    # print("z2 shape: ", z2.shape)
-    # print("y2 shape: ", y2.shape)
 
     node_output = {
         "Z1" : z1,
@@ -61,14 +58,10 @@ def back_prop(W, X, t, node_output):
     y1 = node_output["Y1"]
     y2 = node_output["Y2"]
     w2 = W["W2"]
-    # print("y2 shape: ", y2.shape)
-    # print("t shape: ", t.shape)
 
     dz2 = y2 - t
     dw2 = 1/M * np.dot(dz2.T, y1)
     db2 = 1/M * np.sum(dz2)
-    # print("dz2 shape: ", dz2.shape)
-    # print("w2 shape: ", w2.shape)
 
     # dz1 = np.dot(dz2, w2) * (y1 * (1 - y1))
     dz1 = np.dot(dz2, w2) * step(z1)
@@ -88,11 +81,7 @@ def update_weights(W, grads, alpha):
     b1_new = W["B1"] - alpha * grads["db1"]
     w2_new = W["W2"] - alpha * grads["dw2"]
     b2_new = W["B2"] - alpha * grads["db2"]
-    # print("w1_new shape: ", w1_new.shape)
-    # print("b1_new shape: ", b1_new.shape)
-    # print("w2_new shape: ", w2_new.shape)
-    # print("b2_new shape: ", b2_new.shape)
-
+    
     weights_new = {
         "W1": w1_new,
         "B1": b1_new,
@@ -106,9 +95,13 @@ def predict(X, W):
     threshold = 0.5
     return node_output["Y2"] > threshold
 
-def train(X_train, t_train, X_val, t_val, nn_dims, alpha):
+def train(X_train, t_train, X_val, t_val, nn_dims, params):
     train_losses = []
     valid_accs = []
+
+    batch_size = params['batch_size']
+    epochs = params['epochs']
+    alpha = params['alpha']
 
     W = init_weights(nn_dims["n_x"], nn_dims["n_h"], nn_dims["n_y"])
 
@@ -117,7 +110,7 @@ def train(X_train, t_train, X_val, t_val, nn_dims, alpha):
     epoch_best = 0
 
     num_batches = int(np.ceil(len(X_train)/batch_size))  
-    for epoch in range(MaxEpoch):
+    for epoch in range(epochs):
 
         loss_this_epoch = 0
         for batch in range(num_batches):
@@ -125,22 +118,18 @@ def train(X_train, t_train, X_val, t_val, nn_dims, alpha):
             t_batch = t_train[batch*batch_size: (batch+1)*batch_size]
 
             node_output = forward_prop(X_batch, W)
-            # print("done forward prop")
 
             loss = get_cross_entropy_loss(node_output["Y2"], t_batch)
             loss_this_epoch += loss
 
             grads = back_prop(W, X_batch, t_batch, node_output)
-            # print("done back prop")
 
             W = update_weights(W, grads, alpha)
 
-        print("loss this epoch: ", loss)
 
         # Perform validation on the validation set by accuracy
         t_hat = predict(X_val, W)
-        acc = get_accuracy(t_val, t_hat)
-        print("epoch val acc: ", acc)
+        acc = accuracy_score(t_val, t_hat)
 
         # Append training loss and accuracy for the epoch
         train_losses.append(loss_this_epoch/num_batches)
@@ -153,33 +142,82 @@ def train(X_train, t_train, X_val, t_val, nn_dims, alpha):
     
     return epoch_best, acc_best,  w_best, train_losses, valid_accs
 
+def tune_params(X_train, t_train, X_val, t_val):
+    acc_best = 0
+    alpha_best = None
+    batch_size_best = None
+    n_h_best = None
+
+    alphas = [0.9, 0.1, 0.01, 0.001, 0.0001]
+    batch_sizes = [200, 100, 50, 10]
+    n_hs = [4, 8, 16, 32, 64]
+
+    num_iterations = 10
+    for alpha in alphas:
+        for batch_size in batch_sizes:
+            for n_h in n_hs:
+                summed_acc = 0
+                for i in range(num_iterations):
+                    nn_dims = {
+                        "n_x": X_train.shape[1],
+                        "n_h": n_h,
+                        "n_y": 1,
+                    }
+                    params = {
+                        'batch_size': batch_size,
+                        'epochs': num_iterations,
+                        'alpha': alpha,
+                    }
+                    _, acc, _, _, _ = train(X_train, t_train, X_val, t_val, nn_dims, params)
+                    summed_acc += acc
+
+                avg_acc = summed_acc/num_iterations
+                print(f'alpha: {alpha}, batch: {batch_size}, n_h: {n_h}, avg_acc: {avg_acc}')
+
+                if avg_acc > acc_best:
+                    acc_best = avg_acc
+                    alpha_best = alpha
+                    batch_size_best = batch_size
+                    n_h_best = n_h
+
+    tuned_params = {
+        'batch_size': batch_size_best,
+        'n_h': n_h_best,
+        'alpha': alpha_best,
+    }
+    return acc_best, tuned_params
 
 ##############################
 # Main code starts here
 
-# Single hidden layer with n_h nodes
-n_h = 32
-
-alpha = 0.1     # learning rate
-batch_size = 100    # batch size
-MaxEpoch = 500      # Maximum epoch - default 50
-decay = 0.          # weight decay
-
-# logistic regression classifier
 X_train, t_train, X_val, t_val, X_test, t_test = get_data()
+
+# Tune hyperparameters
+acc, params = tune_params(X_train, t_train, X_val, t_val)
+n_h = params['n_h']
+alpha = params['alpha']
+batch_size = params['batch_size'] 
+print(f'TUNED: alpha: {alpha}, batch: {batch_size}, n_h: {n_h}, acc: {acc}')
+
+# Train using tuned hyperparams and more Epochs
+MaxEpoch = 1000      # Maximum epoch
 
 nn_dims = {
     "n_x": X_train.shape[1],
     "n_h": n_h,
     "n_y": 1,
 }
-
-epoch_best, acc_best, w_best, train_losses, valid_accs = train(X_train, t_train, X_val, t_val, nn_dims, alpha)
+params = {
+    'batch_size': batch_size,
+    'epochs': MaxEpoch,
+    'alpha': alpha,
+}
+epoch_best, acc_best, w_best, train_losses, valid_accs = train(X_train, t_train, X_val, t_val, nn_dims, params)
 print("epoch best: ", epoch_best)
 print("acc best: ", acc_best)
 
 t_hat = predict(X_test, w_best)
-acc_test = get_accuracy(t_test, t_hat)
+acc_test = accuracy_score(t_test, t_hat)
 print("test acc: ", acc_test)
 
 plt.figure()
