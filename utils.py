@@ -6,9 +6,21 @@ def get_cross_entropy_loss(y, t):
     epsilon = 1e-5    
     return -np.average(t * np.log(y + epsilon) + (1 - t) * np.log(1 - y + epsilon))
 
+def get_accuracy(t, t_hat):
+    """
+    Calculate accuracy,
+    """
+    print("t shape: ", t.shape)
+    print("t_hat shape: ", t_hat.shape)
+    num_correct = 0
+    for i, t_m in enumerate(t):
+        if t_m == t_hat[i]:
+            num_correct += 1
+    return num_correct/len(t)
+
 def get_data():
     data = pd.read_csv('./train.csv')
-    # data = shuffle(data)
+    data = shuffle(data)
     # print(data)
     # print(data.describe())
 

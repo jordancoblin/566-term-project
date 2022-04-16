@@ -22,16 +22,6 @@ def one_hot(t, k):
     t_hot[np.arange(len(t_hot)),c] = 1
     return t_hot
 
-def get_accuracy(t, t_hat):
-    """
-    Calculate accuracy,
-    """
-    num_correct = 0
-    for i, t_m in enumerate(t):
-        if t_m == t_hat[i]:
-            num_correct += 1
-    return num_correct/len(t)
-
 def predict(X, w, t=None):
     # X: Nsample x (d)
     # w: (d)
